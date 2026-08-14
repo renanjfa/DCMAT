@@ -8,11 +8,20 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "sintatico.tab.h"
+
 int coluna = 1;
 int comment_line;
 int comment_col;
 int comment_level = 0;
 int first = 1;
+
+/* Buffer com o texto ja consumido da linha atual (declarado como
+ * extern em sintatico.y). Usado para depuracao / mensagens de erro
+ * que precisem exibir o que ja foi lido na linha corrente. */
+#define LINHA_BUFFER_SIZE 1024
+char linha_buffer[LINHA_BUFFER_SIZE];
+static int pos_linha_buffer = 0;
 
 void print_token(const char* fmt, ...) {
     va_list args;
@@ -25,306 +34,179 @@ void print_token(const char* fmt, ...) {
     va_end(args);
 }
 
+/* Acrescenta o lexema reconhecido ao linha_buffer, respeitando o
+ * tamanho do buffer, e avanca o contador de coluna. Deve ser chamada
+ * por (quase) toda regra que reconhece um token. */
+static void avanca(const char* texto) {
+    int len = strlen(texto);
+    coluna += len;
+    if (pos_linha_buffer + len < LINHA_BUFFER_SIZE - 1) {
+        memcpy(linha_buffer + pos_linha_buffer, texto, len);
+        pos_linha_buffer += len;
+        linha_buffer[pos_linha_buffer] = '\0';
+    }
+}
+
+/* Chamada ao final de cada linha (via '\n' ou apos descarte de erro)
+ * para reiniciar o estado do buffer/coluna para a proxima linha. */
+void finalizar_linha() {
+    pos_linha_buffer = 0;
+    linha_buffer[0] = '\0';
+    coluna = 1;
+}
+
+/* Chamada pelo main() (sintatico.y) quando yyparse() retorna erro de
+ * sintaxe, para descartar o restante da linha atual sem tokeniza-la,
+ * evitando que sobras de uma linha invalida "vazem" para a proxima
+ * chamada de yyparse(). */
+static int input(void);
+
+void descarta_resto_linha() {
+    int c;
+    while ((c = input()) != '\n' && c != EOF) {
+        coluna++;
+    }
+    finalizar_linha();
+}
+
 %}
 
 %%
 
-[0-9]+ {
-    print_token("NUM_INTEGER(%s)", yytext);
-    coluna += yyleng;
-}
+[0-9]+ { avanca(yytext); return NUM_INTEGER; }
 
-[0-9]+"."[0-9]+ {
-    print_token("NUM_REAL(%s)", yytext);
-    coluna += yyleng;
-}
+[0-9]+"."[0-9]+ { avanca(yytext); return NUM_REAL; }
 
+"about" { avanca(yytext); return ABOUT; }
 
+"abs" { avanca(yytext); return ABS; }
 
-"about" {
-    print_token("ABOUT");
-    coluna += yyleng;
-}
+"axis" { avanca(yytext); return AXIS; }
 
-"abs" {
-    print_token("ABS");
-    coluna += yyleng;
-}
+"connect_dots" { avanca(yytext); return CONNECT_DOTS; }
 
-"axis" {
-    print_token("AXIS");
-    coluna += yyleng;
-}
+"cos" { avanca(yytext); return COS; }
 
-"connect_dots" {
-    print_token("CONNECT_DOTS");
-    coluna += yyleng;
-}
+"determinant" { avanca(yytext); return DETERMINANT; }
 
-"cos" {
-    print_token("COS");
-    coluna += yyleng;
-}
+"erase" { avanca(yytext); return ERASE; }
 
-"determinant" {
-    print_token("DETERMINANT");
-    coluna += yyleng;
-}
+"float" { avanca(yytext); return FLOAT; }
 
-"e" {
-    print_token("EULER");
-    coluna += yyleng;
-}
+"h_view" { avanca(yytext); return H_VIEW; }
 
-"erase" {
-    print_token("ERASE");
-    coluna += yyleng;
-}
+"integral_steps" { avanca(yytext); return INTEGRAL_STEPS; }
 
-"float" {
-    print_token("FLOAT");
-    coluna += yyleng;
-}
+"integrate" { avanca(yytext); return INTEGRATE; }
 
-"h_view" {
-    print_token("H_VIEW");
-    coluna += yyleng;
-}
+"linear_system" { avanca(yytext); return LINEAR_SYSTEM; }
 
-"integral_steps" {
-    print_token("INTEGRAL_STEPS");
-    coluna += yyleng;
-}
+"matrix" { avanca(yytext); return MATRIX; }
 
-"integrate" {
-    print_token("INTEGRATE");
-    coluna += yyleng;
-}
+"off" { avanca(yytext); return OFF; }
 
-"linear_system" {
-    print_token("LINEAR_SYSTEM");
-    coluna += yyleng;
-}
+"on" { avanca(yytext); return ON; }
 
-"matrix" {
-    print_token("MATRIX");
-    coluna += yyleng;
-}
+"plot" { avanca(yytext); return PLOT; }
 
-"off" {
-    print_token("OFF");
-    coluna += yyleng;
-}
+"precision" { avanca(yytext); return PRECISION; }
 
-"on" {
-    print_token("ON");
-    coluna += yyleng;
-}
+"quit" { avanca(yytext); return QUIT; }
 
-"pi" {
-    print_token("PI");
-    coluna += yyleng;
-}
+"reset" { avanca(yytext); return RESET; }
 
-"plot" {
-    print_token("PLOT");
-    coluna += yyleng;
-}
+"rpn" { avanca(yytext); return RPN; }
 
-"precision" {
-    print_token("PRECISION");
-    coluna += yyleng;
-}
+"sen" { avanca(yytext); return SEN; }
 
-"quit" {
-    print_token("QUIT");
-    coluna += yyleng;
-}
+"set" { avanca(yytext); return SET; }
 
-"reset" {
-    print_token("RESET");
-    coluna += yyleng;
-}
+"settings" { avanca(yytext); return SETTINGS; }
 
-"rpn" {
-    print_token("RPN");
-    coluna += yyleng;
-}
+"show" { avanca(yytext); return SHOW; }
 
-"sen" {
-    print_token("SEN");
-    coluna += yyleng;
-}
+"solve" { avanca(yytext); return SOLVE; }
 
-"set" {
-    print_token("SET");
-    coluna += yyleng;
-}
+"sum" { avanca(yytext); return SUM; }
 
-"settings" {
-    print_token("SETTINGS");
-    coluna += yyleng;
-}
+"symbols" { avanca(yytext); return SYMBOLS; }
 
-"show" {
-    print_token("SHOW");
-    coluna += yyleng;
-}
+"tan" { avanca(yytext); return TAN; }
 
-"solve" {
-    print_token("SOLVE");
-    coluna += yyleng;
-}
+"v_view" { avanca(yytext); return V_VIEW; }
 
-"sum" {
-    print_token("SUM");
-    coluna += yyleng;
-}
+ /* pi, e (Euler) e x sao as UNICAS palavras reservadas que nao
+    distinguem maiusculas de minusculas (PI, Pi, pI, pi / E, e / X, x) */
+[Pp][Ii] { avanca(yytext); return PI; }
 
-"symbols" {
-    print_token("SYMBOLS");
-    coluna += yyleng;
-}
+[Ee] { avanca(yytext); return EULER; }
 
-"tan" {
-    print_token("TAN");
-    coluna += yyleng;
-}
-
-"v_view" {
-    print_token("V_VIEW");
-    coluna += yyleng;
-}
-
-"x" {
-    print_token("VARIAVEL");
-    coluna += yyleng;
-}
+[Xx] { avanca(yytext); return VARIAVEL; }
 
 
 
-"+" {
-    print_token("ADICAO");
-    coluna += yyleng;
-}
+"+" { avanca(yytext); return ADICAO; }
 
-"-" {
-    print_token("SUBTRACAO");
-    coluna += yyleng;
-}
+"-" { avanca(yytext); return SUBTRACAO; }
 
-"*" {
-    print_token("MULTIPLY");
-    coluna += yyleng;
-}
+"*" { avanca(yytext); return MULTIPLY; }
 
-"/" {
-    print_token("DIVISION");
-    coluna += yyleng;
-}
+"/" { avanca(yytext); return DIVISION; }
 
-"^" {
-    print_token("POTENCIACAO");
-    coluna += yyleng;
-}
+"^" { avanca(yytext); return POTENCIACAO; }
 
-"%" {
-    print_token("RESTO_DIVISAO");
-    coluna += yyleng;
-}
+"%" { avanca(yytext); return RESTO_DIVISAO; }
 
-"(" {
-    print_token("LEFT_PAREN");
-    coluna += yyleng;
-}
+"(" { avanca(yytext); return LEFT_PAREN; }
 
-")" {
-    print_token("RIGHT_PAREN");
-    coluna += yyleng;
-}
+")" { avanca(yytext); return RIGHT_PAREN; }
 
-":" {
-    print_token("COLON");
-    coluna += yyleng;
-}
+":=" { avanca(yytext); return ATRIBUICAO; }
 
-"=" {
-    print_token("EQUAL");
-    coluna += yyleng;
-}
+":" { avanca(yytext); return COLON; }
 
-":=" {
-    print_token("ATRIBUICAO");
-    coluna += yyleng;
-}
+"=" { avanca(yytext); return EQUAL; }
 
-"[" {
-    print_token("L_SQUARE_BRACKET");
-    coluna += yyleng;
-}
+"[" { avanca(yytext); return L_SQUARE_BRACKET; }
 
-"]" {
-    print_token("R_SQUARE_BRACKET");
-    coluna += yyleng;
-}
+"]" { avanca(yytext); return R_SQUARE_BRACKET; }
 
-";" {
-    print_token("SEMICOLON");
-    coluna += yyleng;
-}
+";" { avanca(yytext); return SEMICOLON; }
 
-"," {
-    print_token("COMMA");
-    coluna += yyleng;
-}
+"," { avanca(yytext); return COMMA; }
 
 
 
 [a-zA-Z_][a-zA-Z0-9_]* {
-    int start_col = coluna;
-    coluna += yyleng;
+    avanca(yytext);
 
     if (yyleng > 255) {
-        print_token(
-            "error:lexical:%d:%d: identifier too long",
-            yylineno,
-            start_col
-        );
+        return ERROR;
     } else {
-        print_token("IDENTIFIER(%s)", yytext);
+        return IDENTIFIER;
     }
 }
 
-
-
 \n {
-    coluna = 1;
-}
-
-\r {
-    coluna = 1;
-}
-
-[ \t]+ {
-    coluna += yyleng;
-}
-
-
-
-. {
-    print_token(
-        "error:lexical:%d:%d: %s",
-        yylineno,
-        coluna,
-        yytext
-    );
-
-    coluna += yyleng;
-}
-
-%%
-
-int main() {
-    yylex();
+    /* fim da linha: encerra a chamada atual de yyparse() (retorno 0
+       sinaliza "fim de tokens" para o parser) e prepara o estado
+       para a proxima linha/prompt. */
+    finalizar_linha();
     return 0;
 }
+
+\r { /* ignorado: o \n de "\r\n" ja encerra a linha na regra acima */ }
+
+[ \t]+ { avanca(yytext); }
+
+. {
+    /* Caractere invalido (secao 5.1): imprime a mensagem exigida e
+       descarta o caractere sem repassa-lo ao parser como token, para
+       nao gerar tambem um SYNTAX ERROR redundante. */
+    printf("Invalid Symbol: %s\n", yytext);
+    avanca(yytext);
+}
+
+
+
+%%

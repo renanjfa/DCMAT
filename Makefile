@@ -1,10 +1,12 @@
 GCC = gcc
-TARGET = slexer
+TARGET = parser
 
 LEXICO = lexico.l
+SINTATICO = sintatico.y
 
 all:
 	flex $(LEXICO)
+	bison -d $(SINTATICO)
 	$(GCC) *.c -I. -o $(TARGET)
 
 run: all
