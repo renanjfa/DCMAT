@@ -1,5 +1,5 @@
 GCC = gcc
-TARGET = parser
+TARGET = dcmat
 
 LEXICO = lexico.l
 SINTATICO = sintatico.y

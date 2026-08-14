@@ -1,0 +1,16 @@
+sen(x)
+-x*sen(x)
+-10*45^2
++(1+3)*78
+-17.78 + 3 + identificador - minha_variavel
+-X * sen(x) + cos(x) * (tan(x+3.78)/4.2)
+abs(-666)-666
++666-pi+e
+
+-10*34;
+ola eu sou o renan
+
+integrate(0:6.28,sen(x))
+integrate(0:6.28,sen(x));
+
+rpn(sen(x)*(1+x)+chuchu*pi);

@@ -123,7 +123,7 @@ Estado: ON
 Comando_Plot: PLOT Plot_Opcional
 ;
 
-Plot_Opcional: SEMICOLON
+Plot_Opcional: SEMICOLON {printf("No Function defined!\n");}
              | LEFT_PAREN Expressao RIGHT_PAREN SEMICOLON
 ;
 
@@ -245,6 +245,8 @@ void yyerror(const char *s) {
      */
     if (yytext == NULL || yytext[0] == '\0') {
         printf("SYNTAX ERROR: Incomplete Command\n");
+    } else if (yytext[0] == '\n') {
+        printf("SYNTAX ERROR: [quebra de linha]\n");
     } else {
         printf("SYNTAX ERROR: [%s]\n", yytext);
     }
