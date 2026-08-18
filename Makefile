@@ -7,7 +7,7 @@ SINTATICO = sintatico.y
 all:
 	flex $(LEXICO)
 	bison -d $(SINTATICO)
-	$(GCC) *.c -I. -o $(TARGET)
+	$(GCC) *.c -I. -o $(TARGET) -lm
 
 run: all
 	./$(TARGET)

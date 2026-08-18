@@ -16,9 +16,7 @@ int comment_col;
 int comment_level = 0;
 int first = 1;
 
-/* Buffer com o texto ja consumido da linha atual (declarado como
- * extern em sintatico.y). Usado para depuracao / mensagens de erro
- * que precisem exibir o que ja foi lido na linha corrente. */
+// buffer para mensagem de erro
 #define LINHA_BUFFER_SIZE 1024
 char linha_buffer[LINHA_BUFFER_SIZE];
 static int pos_linha_buffer = 0;
@@ -34,9 +32,7 @@ void print_token(const char* fmt, ...) {
     va_end(args);
 }
 
-/* Acrescenta o lexema reconhecido ao linha_buffer, respeitando o
- * tamanho do buffer, e avanca o contador de coluna. Deve ser chamada
- * por (quase) toda regra que reconhece um token. */
+// Acrescenta o lexema reconhecido ao linha_buffer, respeitando o tamanho do buffer, e avanca o contador de coluna
 static void avanca(const char* texto) {
     int len = strlen(texto);
     coluna += len;
@@ -47,18 +43,13 @@ static void avanca(const char* texto) {
     }
 }
 
-/* Chamada ao final de cada linha (via '\n' ou apos descarte de erro)
- * para reiniciar o estado do buffer/coluna para a proxima linha. */
+// chamado dps de \n para reiniciar o buffer
 void finalizar_linha() {
     pos_linha_buffer = 0;
     linha_buffer[0] = '\0';
     coluna = 1;
 }
 
-/* Chamada pelo main() (sintatico.y) quando yyparse() retorna erro de
- * sintaxe, para descartar o restante da linha atual sem tokeniza-la,
- * evitando que sobras de uma linha invalida "vazem" para a proxima
- * chamada de yyparse(). */
 static int input(void);
 
 void descarta_resto_linha() {
@@ -73,9 +64,23 @@ void descarta_resto_linha() {
 
 %%
 
-[0-9]+ { avanca(yytext); return NUM_INTEGER; }
+[0-9]+ {    
+    avanca(yytext); 
+    yylval.val.tipo = DCMAT_FLOAT;
+    yylval.val.fval = (float) atof(yytext);  // transformacao float
+    strncpy(yylval.val.rpn, yytext, RPN_BUF_SIZE - 1);
+    yylval.val.rpn[RPN_BUF_SIZE - 1] = '\0';
+    return NUM_INTEGER; 
+}
 
-[0-9]+"."[0-9]+ { avanca(yytext); return NUM_REAL; }
+[0-9]+"."[0-9]+ { 
+    avanca(yytext); 
+    yylval.val.tipo = DCMAT_FLOAT;
+    yylval.val.fval = (float) atof(yytext);
+    strncpy(yylval.val.rpn, yytext, RPN_BUF_SIZE - 1);
+    yylval.val.rpn[RPN_BUF_SIZE - 1] = '\0';
+    return NUM_REAL; 
+}
 
 "about" { avanca(yytext); return ABOUT; }
 
@@ -135,8 +140,7 @@ void descarta_resto_linha() {
 
 "v_view" { avanca(yytext); return V_VIEW; }
 
- /* pi, e (Euler) e x sao as UNICAS palavras reservadas que nao
-    distinguem maiusculas de minusculas (PI, Pi, pI, pi / E, e / X, x) */
+
 [Pp][Ii] { avanca(yytext); return PI; }
 
 [Ee] { avanca(yytext); return EULER; }
@@ -183,26 +187,22 @@ void descarta_resto_linha() {
     if (yyleng > 255) {
         return ERROR;
     } else {
+        strncpy(yylval.sval, yytext, 255);
+        yylval.sval[255] = '\0';
         return IDENTIFIER;
     }
 }
 
 \n {
-    /* fim da linha: encerra a chamada atual de yyparse() (retorno 0
-       sinaliza "fim de tokens" para o parser) e prepara o estado
-       para a proxima linha/prompt. */
     finalizar_linha();
     return 0;
 }
 
-\r { /* ignorado: o \n de "\r\n" ja encerra a linha na regra acima */ }
+\r { }
 
 [ \t]+ { avanca(yytext); }
 
 . {
-    /* Caractere invalido (secao 5.1): imprime a mensagem exigida e
-       descarta o caractere sem repassa-lo ao parser como token, para
-       nao gerar tambem um SYNTAX ERROR redundante. */
     printf("Invalid Symbol: %s\n", yytext);
     avanca(yytext);
 }
